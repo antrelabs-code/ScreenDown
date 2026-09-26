@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ScreenDown</title>
+<meta name="theme-color" content="#12181B">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #12181B;
+    --text: #EDEAE3;
+    --success: #7FA98C;
+    --active: #D9A566;
+    --text-dim: #9BA3A6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  h1, h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    line-height: 1.25;
+  }
+
+  .screen {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 2rem 1.75rem;
+    max-width: 32rem;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .screen.active {
+    display: flex;
+  }
+
+  .screen h1 {
+    font-size: 1.7rem;
+    max-width: 22ch;
+  }
+
+  .screen p {
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: var(--text-dim);
+    max-width: 34ch;
+    margin-top: 0.75rem;
+  }
+
+  button {
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    background: none;
+    border: 1px solid var(--text);
+    color: var(--text);
+    padding: 0.9rem 2.2rem;
+    border-radius: 2rem;
+    cursor: pointer;
+    margin-top: 2.5rem;
+  }
+
+  button:focus-visible {
+    outline: 2px solid var(--active);
+    outline-offset: 2px;
+  }
+
+  button.secondary {
+    border-color: var(--text-dim);
+    color: var(--text-dim);
+  }
+
+  .btn-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 2.5rem;
+    width: 100%;
+  }
+
+  .btn-row button {
+    margin-top: 0;
+  }
+
+  /* live test screen */
+  #screen-test-live .dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--active);
+    opacity: 0.35;
+  }
+
+  #screen-test-live.waiting .dot {
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.25; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.15); }
+  }
+
+  #screen-test-live p.state {
+    margin-top: 1.5rem;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+
+  .accent-success { color: var(--success); }
+  .accent-active { color: var(--active); }
+
+  @media (prefers-reduced-motion: reduce) {
+    #screen-test-live.waiting .dot { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1a -->
+<section class="screen active" id="screen-1a">
+  <h1>Cześć. Zacznijmy od czegoś małego.</h1>
+  <button data-next="screen-1b">Dalej</button>
+</section>
+
+<!-- 1b -->
+<section class="screen" id="screen-1b">
+  <h1>Odkładamy telefon. Bez presji, bez punktów.</h1>
+  <p>To trening powrotu do ciszy.</p>
+  <button data-next="screen-2a">Dalej</button>
+</section>
+
+<!-- 2a -->
+<section class="screen" id="screen-2a">
+  <h1>Za chwilę odłożysz telefon ekranem w dół.</h1>
+  <button data-next="screen-2b">Dalej</button>
+</section>
+
+<!-- 2b -->
+<section class="screen" id="screen-2b">
+  <h1>Poczekam 30 sekund i dam znać dźwiękiem.</h1>
+  <p>Jak go usłyszysz — podnieś telefon ponownie.</p>
+  <button id="btn-start-test">Gotowe</button>
+</section>
+
+<!-- 3: live test -->
+<section class="screen" id="screen-test-live">
+  <div class="dot"></div>
+  <p class="state" id="test-state">Odłóż telefon ekranem w dół.</p>
+</section>
+
+<!-- 4a: success -->
+<section class="screen" id="screen-4a">
+  <h1 id="success-headline">Udało się.</h1>
+  <p id="success-sub">Te 30 sekund to już Twoje — cisza, której nikt nie przerwał.</p>
+  <button id="btn-success-continue">Dalej</button>
+</section>
+
+<!-- 4b: picked up early (onboarding only — immediate retry) -->
+<section class="screen" id="screen-4b">
+  <h1>Spróbujemy jeszcze raz, kiedy będziesz gotowy.</h1>
+  <button id="btn-retry-test">Spróbujmy teraz</button>
+</section>
+
+<!-- 5: tomorrow teaser (onboarding only) -->
+<section class="screen" id="screen-5">
+  <h1>To na dziś wystarczy.</h1>
+  <p>Jutro — trochę dłuższa cisza, trochę głębszy oddech.</p>
+  <button data-next="screen-6">Dalej</button>
+</section>
+
+<!-- 6: mode choice -->
+<section class="screen" id="screen-6">
+  <h1>Jak wolisz, żebym Ci pomagał?</h1>
+  <div class="btn-row">
+    <button data-mode="self">Sam wybieram moment ciszy</button>
+    <button data-mode="coach">Wolę, żebyś delikatnie przypominał</button>
+  </div>
+</section>
+
+<!-- 7: permissions -->
+<section class="screen" id="screen-7">
+  <h1>Żeby to zadziałało, muszę wiedzieć, kiedy telefon leży spokojnie, ekranem w dół.</h1>
+  <p id="permission-note">Zgadzasz się?</p>
+  <button id="btn-grant-permission">Zgadzam się</button>
+</section>
+
+<!-- daily: ready for today's session -->
+<section class="screen" id="screen-ready">
+  <h1 id="ready-headline">Gotowy na dziś?</h1>
+  <p id="ready-sub"></p>
+  <button id="btn-start-daily">Zacznij</button>
+</section>
+
+<!-- daily: picked up early today, wait for tomorrow -->
+<section class="screen" id="screen-failed-today">
+  <h1>To nic.</h1>
+  <p>Cisza poczeka do jutra.</p>
+</section>
+
+<!-- daily: reflection screen, shown the day after a failed session -->
+<section class="screen" id="screen-reflection">
+  <h1 id="reflection-headline"></h1>
+  <p>Co robimy dziś?</p>
+  <div class="btn-row">
+    <button id="btn-reflection-retry">Spróbujmy jeszcze raz na tym poziomie</button>
+    <button id="btn-reflection-stepdown">Zejdźmy o krok, żeby złapać oddech</button>
+  </div>
+</section>
+
+<!-- already done today -->
+<section class="screen" id="screen-home">
+  <h1 id="home-headline">Zapisałem dzisiejszą próbę.</h1>
+  <p id="home-sub">Dziękuję, że wracasz sprawdzić. Jutro zrobimy kolejny mały kroczek.</p>
+</section>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'screendown_state';
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveState(state) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      /* storage unavailable — app still works, just won't remember between visits */
+    }
+  }
+
+  var state = loadState() || {
+    onboardingDone: false,
+    mode: null,
+    level: 0, // index into LEVELS
+    totalReclaimedSeconds: 0,
+    lastSessionDate: null,     // "YYYY-MM-DD" of the most recent session
+    lastSessionOutcome: null   // "success" | "failed"
+  };
+
+  var LEVELS = [30, 60, 120, 180, 300, 480, 600, 900, 1200, 1800]; // seconds
+
+  var REFLECTION_LINES = [
+    "Wczoraj cisza urwała się wcześniej. To się zdarza.",
+    "Nie każdy dzień ma tyle spokoju, ile byśmy chcieli.",
+    "Wczoraj oddech był krótszy. Dziś możemy spróbować od nowa.",
+    "Czasem cisza nie chce trwać. Wracamy do niej, kiedy jesteśmy gotowi.",
+    "Wczoraj nie udało się dotrwać do końca. To nic — cisza poczeka."
+  ];
+
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function formatDuration(totalSeconds) {
+    var m = Math.floor(totalSeconds / 60);
+    var s = totalSeconds % 60;
+    if (m === 0) return s + ' s';
+    if (s === 0) return m + ' min';
+    return m + ' min ' + s + ' s';
+  }
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(function (el) {
+      el.classList.remove('active');
+    });
+    document.getElementById(id).classList.add('active');
+  }
+
+  // wire up plain "Dalej" buttons
+  document.querySelectorAll('button[data-next]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      showScreen(btn.getAttribute('data-next'));
+    });
+  });
+
+  // ---- gong sound (Web Audio API, no audio file needed) ----
+  function playGong() {
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 220;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 2.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 2.5);
+    } catch (e) { /* audio not available, silently skip */ }
+    if (navigator.vibrate) navigator.vibrate(200);
+  }
+
+  // ---- screen wake lock ----
+  var wakeLock = null;
+  async function requestWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen');
+      }
+    } catch (e) { /* not critical — session still works, screen may dim */ }
+  }
+  function releaseWakeLock() {
+    if (wakeLock) { wakeLock.release(); wakeLock = null; }
+  }
+
+  // ---- face-down detection ----
+  var FACE_DOWN_THRESHOLD = -7; // accelerationIncludingGravity.z
+  var GRACE_PERIOD_MS = 4000;
+  var testState = 'idle'; // idle | waiting-facedown | counting | grace
+  var motionHandler = null;
+  var startTimeout = null;
+  var graceTimeout = null;
+
+  function isFaceDown(event) {
+    var g = event.accelerationIncludingGravity;
+    return g && typeof g.z === 'number' && g.z < FACE_DOWN_THRESHOLD;
+  }
+
+  function stopListening() {
+    if (motionHandler) window.removeEventListener('devicemotion', motionHandler);
+    motionHandler = null;
+    clearTimeout(startTimeout);
+    clearTimeout(graceTimeout);
+    releaseWakeLock();
+  }
+
+  function startLiveTest() {
+    showScreen('screen-test-live');
+    document.getElementById('screen-test-live').classList.remove('waiting');
+    document.getElementById('test-state').textContent = 'Odłóż telefon ekranem w dół.';
+    testState = 'waiting-facedown';
+    requestWakeLock();
+
+    var duration = LEVELS[state.level] * 1000;
+
+    motionHandler = function (event) {
+      if (testState === 'waiting-facedown' && isFaceDown(event)) {
+        testState = 'counting';
+        document.getElementById('screen-test-live').classList.add('waiting');
+        document.getElementById('test-state').textContent = '';
+        startTimeout = setTimeout(onTestSuccess, duration);
+
+      } else if (testState === 'counting' && !isFaceDown(event)) {
+        // picked up — start a short grace period before counting it as failed
+        testState = 'grace';
+        if (navigator.vibrate) navigator.vibrate([80, 80, 80]);
+        graceTimeout = setTimeout(function () {
+          if (testState === 'grace') {
+            stopListening();
+            onTestFailed();
+          }
+        }, GRACE_PERIOD_MS);
+
+      } else if (testState === 'grace' && isFaceDown(event)) {
+        // placed back down in time — resume, original countdown kept running
+        clearTimeout(graceTimeout);
+        testState = 'counting';
+      }
+    };
+
+    window.addEventListener('devicemotion', motionHandler);
+  }
+
+  function onTestSuccess() {
+    stopListening();
+    testState = 'idle';
+    playGong();
+
+    var gained = LEVELS[state.level];
+    state.totalReclaimedSeconds += gained;
+    state.lastSessionDate = todayStr();
+    state.lastSessionOutcome = 'success';
+    if (state.level < LEVELS.length - 1) state.level++;
+    saveState(state);
+
+    document.getElementById('success-sub').textContent =
+      'Te ' + formatDuration(gained) + ' to już Twoje — cisza, której nikt nie przerwał.';
+    showScreen('screen-4a');
+  }
+
+  function onTestFailed() {
+    testState = 'idle';
+    if (!state.onboardingDone) {
+      // very first test — gentle immediate retry, no penalty
+      showScreen('screen-4b');
+      return;
+    }
+    state.lastSessionDate = todayStr();
+    state.lastSessionOutcome = 'failed';
+    saveState(state);
+    showScreen('screen-failed-today');
+  }
+
+  // manual fallback if no motion sensor / permission denied
+  function offerManualFallback() {
+    var note = document.getElementById('test-state');
+    note.innerHTML = 'Odłóż telefon ekranem w dół.<br><button id="btn-manual-fallback" style="margin-top:1.5rem;">Odłożyłem, licz mimo to</button>';
+    document.getElementById('btn-manual-fallback').addEventListener('click', function () {
+      var duration = LEVELS[state.level] * 1000;
+      note.textContent = '';
+      document.getElementById('screen-test-live').classList.add('waiting');
+      setTimeout(onTestSuccess, duration);
+    });
+  }
+
+  // ---- onboarding wiring ----
+  document.getElementById('btn-start-test').addEventListener('click', function () {
+    requestMotionPermissionIfNeeded(function (granted) {
+      startLiveTest();
+      if (!granted) offerManualFallback();
+    });
+  });
+
+  document.getElementById('btn-retry-test').addEventListener('click', startLiveTest);
+
+  document.getElementById('btn-success-continue').addEventListener('click', function () {
+    if (!state.onboardingDone) {
+      showScreen('screen-5');
+    } else {
+      renderHomeScreen();
+    }
+  });
+
+  document.querySelectorAll('button[data-mode]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      state.mode = btn.getAttribute('data-mode');
+      saveState(state);
+      showScreen('screen-7');
+    });
+  });
+
+  function requestMotionPermissionIfNeeded(callback) {
+    if (typeof DeviceMotionEvent !== 'undefined' &&
+        typeof DeviceMotionEvent.requestPermission === 'function') {
+      // iOS 13+
+      DeviceMotionEvent.requestPermission().then(function (result) {
+        callback(result === 'granted');
+      }).catch(function () {
+        callback(false);
+      });
+    } else if (typeof DeviceMotionEvent !== 'undefined') {
+      // Android / older iOS — no explicit permission prompt needed
+      callback(true);
+    } else {
+      callback(false);
+    }
+  }
+
+  document.getElementById('btn-grant-permission').addEventListener('click', function () {
+    requestMotionPermissionIfNeeded(function (granted) {
+      state.onboardingDone = true;
+      saveState(state);
+      if (!granted) {
+        document.getElementById('permission-note').textContent =
+          'Bez dostępu do czujników poproszę Cię, żebyś potwierdzał ręcznie.';
+      }
+      renderHomeScreen();
+    });
+  });
+
+  // ---- daily engine ----
+  document.getElementById('btn-start-daily').addEventListener('click', startLiveTest);
+
+  document.getElementById('btn-reflection-retry').addEventListener('click', function () {
+    // stay on current level
+    state.lastSessionOutcome = null;
+    saveState(state);
+    startLiveTest();
+  });
+
+  document.getElementById('btn-reflection-stepdown').addEventListener('click', function () {
+    if (state.level > 0) state.level--;
+    state.lastSessionOutcome = null;
+    saveState(state);
+    startLiveTest();
+  });
+
+  function renderHomeScreen() {
+    var today = todayStr();
+
+    if (state.lastSessionDate === today) {
+      // already interacted with the app today
+      if (state.lastSessionOutcome === 'success') {
+        document.getElementById('home-headline').textContent = 'Zapisałem dzisiejszą próbę.';
+        document.getElementById('home-sub').textContent =
+          'Odzyskany czas do tej pory: ' + formatDuration(state.totalReclaimedSeconds) + '. Do zobaczenia jutro.';
+        showScreen('screen-home');
+      } else {
+        showScreen('screen-failed-today');
+      }
+      return;
+    }
+
+    // a new day
+    if (state.lastSessionOutcome === 'failed') {
+      var line = REFLECTION_LINES[Math.floor(Math.random() * REFLECTION_LINES.length)];
+      document.getElementById('reflection-headline').textContent = line;
+      showScreen('screen-reflection');
+      return;
+    }
+
+    // new day, previous session (if any) was a success — ready to go again
+    document.getElementById('ready-sub').textContent =
+      'Dziś celujemy w ' + formatDuration(LEVELS[state.level]) + '.';
+    showScreen('screen-ready');
+  }
+
+  // ---- entry point ----
+  if (state.onboardingDone) {
+    renderHomeScreen();
+  } else {
+    showScreen('screen-1a');
+  }
+
+  // register service worker (basic offline shell — optional, safe no-op if file missing)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>
